@@ -1,5 +1,6 @@
 import cv2
 from cvzone.HandTrackingModule import HandDetector
+from pynput.keyboard import Key,Controller
 
 cap=cv2.VideoCapture(0)
 screen_width = 1920
@@ -37,9 +38,11 @@ class Button():
         self.text=text
 
 
-
-
 buttonList = []
+
+finalText = ""
+
+keyboard = Controller()
 
 for i in range(len(keys)):
     for j,key in enumerate(keys[i]):
@@ -48,12 +51,58 @@ for i in range(len(keys)):
 while cap.isOpened():
     ret,frame = cap.read()
     hands,frame = detector.findHands(frame)
-    drawAll(frame,buttonList)
+    frame = drawAll(frame,buttonList)
 
- 
+    if hands:
+         print(hands)
+         for button in buttonList:
+            x,y = button.pos
+            w,h = button.size
+
+            pt = list(hands[0].values())[0]
+
+            if x < pt[8][0] < x+w and y < pt[8][1] < y+h:
+                cv2.rectangle(frame,
+                    button.pos,
+                    (x + w, y + h),
+                    (0, 255, 0),
+                    cv2.FILLED)
+                cv2.putText(frame,button.text,
+                        (x + 15, y + 35),
+                        cv2.FONT_HERSHEY_PLAIN,2,
+                        (255,255,255),2)
+                
+                l,_,_ = detector.findDistance(pt[8][:2],pt[12][:2],frame)
+                print(l)
+
+                # When clicked
+                if l<30:
+                    keyboard.press(button.text)
+                    cv2.rectangle(frame,
+                            button.pos,
+                            (x + w, y + h),
+                            (255,0,255),
+                            cv2.FILLED)
+                    cv2.putText(frame,button.text,
+                            (x + 15, y + 35),
+                            cv2.FONT_HERSHEY_PLAIN,2,
+                            (255,255,255),2)
+                    finalText+=button.text
+
+    cv2.rectangle(frame,
+                (50,400),
+                (600,450),
+                (0, 255, 0),
+                cv2.FILLED)
+    cv2.putText(frame,finalText,
+                (60,440),
+                cv2.FONT_HERSHEY_PLAIN,2,
+                (255,255,255),2)
+
     cv2.imshow("frame",frame)
+    key=cv2.waitKey(100)
 
-    if cv2.waitKey(1) & 0xFF==ord("q"):
+    if key==ord("q"):
         break
 
 cap.release()
